@@ -2,7 +2,7 @@
 require 'Autolink.php';
 require 'Extractor.php';
 require 'lists.php';
-		
+
 menu_register(array(
 	'' => array(
 		'callback' => 'twitter_home_page',
@@ -173,7 +173,7 @@ function get_target()
 	{
 		return "_self";
 	}
-	else 
+	else
 	{
 		return "_blank";
 	}
@@ -193,14 +193,14 @@ function twitter_profile_page() {
 		);
 
 		$cb = get_codebird();
-		
-			
+
+
 		@twitter_api_status($cb->account_updateProfile($api_options));
 
 		$content = "<h2>Profile Updated</h2>";
-	} 
-	
-	//	http://api.twitter.com/1/account/update_profile_image.format 
+	}
+
+	//	http://api.twitter.com/1/account/update_profile_image.format
 	if ($_FILES['image']['tmp_name']) {
 		// these files to upload. You can also just upload 1 image!
 		$api_options = array(
@@ -209,7 +209,7 @@ function twitter_profile_page() {
 
 		@twitter_api_status($cb->account_updateProfileImage($api_options));
 	}
-	
+
 	//	Twitter API is really slow!  If there's no delay, the old profile is returned.
 	//	Wait for 5 seconds before getting the user's information, which seems to be sufficient
 	//	See https://dev.twitter.com/rest/reference/post/account/update_profile_image
@@ -254,9 +254,9 @@ function twitter_profile_page() {
 function friendship_exists($user_a) {
 
 	$cb = get_codebird();
-	
+
 	$api_options = array('target_screen_name' => $user_a);
-		
+
 	$friendship = $cb->friendships_show($api_options);
 	twitter_api_status($friendship);
 
@@ -269,9 +269,9 @@ function friendship_exists($user_a) {
 
 function friendship($user_a) {
 	$cb = get_codebird();
-	
+
 	$api_options = array('target_screen_name' => $user_a);
-		
+
 	$friendship = $cb->friendships_show($api_options);
 	twitter_api_status($friendship);
 	return $friendship;
@@ -280,10 +280,10 @@ function friendship($user_a) {
 function twitter_block_exists($user_id) {
 	$cb = get_codebird();
 	$api_options = array("user_id" => $user_id);
-	
+
 	// 0th element http://stackoverflow.com/questions/3851489/return-php-object-by-index-number-not-name
 	$friendship = current($cb->friendships_lookup($api_options));
-	
+
 	return ("blocking" == $friendship->connections[0]);
 }
 
@@ -307,7 +307,7 @@ function twitter_trends_page($query) {
 	$local_object = $cb->trends_available($api_options);
 	twitter_api_status($local_object);
 	$local = (array)$local_object;
-	
+
 
 	$header = '<form method="get" action="trends"><select name="woeid">';
 	$header .= '<option value="1"' . (($woeid == 1) ? ' selected="selected"' : '') . '>Worldwide</option>';
@@ -328,7 +328,7 @@ function twitter_trends_page($query) {
 		}
 	}
 	$header .= '</select> <input type="submit" value="Go" /></form>';
-	
+
 	$api_options = array("id" => $woeid);
 
 	$trends_object = $cb->trends_place($api_options);
@@ -397,7 +397,7 @@ function get_codebird() { //$url, $post_data = false) {
 	// 	$rate_limit .= " Rate Limit: " . $headers_array['x-rate-limit-remaining'] . " out of " . $headers_array['x-rate-limit-limit'] . " calls remaining for the next {$minutes_until_reset} minutes";
 	// }
 
-	// $api_time += microtime(1) - $api_start;	
+	// $api_time += microtime(1) - $api_start;
 }
 
 
@@ -407,18 +407,43 @@ function twitter_get_media($status) {
 	if(setting_fetch('hide_inline') || stripos($status->text, 'NSFW') !== false) {
 		return;
 	}
-	if($status->entities->media) {
-		
-		$media_html = '';
-		
-		foreach($status->entities->media as $media) {
-	
+	// echo "<br> status <pre>" . var_export($status,true). "</pre>";
+	//	If there are multiple images
+	if ($status->extended_entities) {
+		$media_html = "<span class=\"embed\">";
+
+		foreach($status->extended_entities->media as $media) {
+
 			if ($_SERVER['HTTPS'] == "on" || (0 === strpos(BASE_URL, "https://"))) {
 				$image = $media->media_url_https;
 			} else {
 				$image = $media->media_url;
 			}
-			
+
+			$link = $media->url;
+
+			$width = $media->sizes->small->w;
+			$height = $media->sizes->small->h;
+
+			$media_html .= "<a href=\"" . image_proxy($image) . ":large\" target=\"" . get_target() . "\" class=\"action\" >
+			                  <img src=\"{$image}:small\" width=\"{$width}\" height=\"{$height}\" class=\"embedded\" >
+			               </a>";
+		}
+		$media_html .= "</span>";
+		return $media_html ;//. "<br/>";
+
+	} else if($status->entities->media) {
+
+		$media_html = '';
+
+		foreach($status->entities->media as $media) {
+
+			if ($_SERVER['HTTPS'] == "on" || (0 === strpos(BASE_URL, "https://"))) {
+				$image = $media->media_url_https;
+			} else {
+				$image = $media->media_url;
+			}
+
 			$link = $media->url;
 
 			$width = $media->sizes->small->w;
@@ -428,9 +453,9 @@ function twitter_get_media($status) {
 			$media_html .= 	"<img src=\"{$image}:small\" width=\"{$width}\" height=\"{$height}\" class=\"embedded\" >";
 			$media_html .= "</a></span>";
 		}
-	
+
 		return $media_html ;//. "<br/>";
-	}	
+	}
 }
 
 function twitter_parse_tags($input, $entities = false) {
@@ -438,7 +463,7 @@ function twitter_parse_tags($input, $entities = false) {
 
 	//Linebreaks.  Some clients insert \n for formatting.
 	$out = nl2br($out);
-	
+
 	// Use the Entities to replace hyperlink URLs
 	// http://dev.twitter.com/pages/tweet_entities
 	if($entities) {
@@ -450,33 +475,33 @@ function twitter_parse_tags($input, $entities = false) {
 				else {
 					$display_url = $urls->url;
 				}
-				
+
 				//$url = $urls->url;
 				//	Stop Invasive monitoring of URLs
 				$url = $urls->expanded_url;
 				$parsed_url = parse_url($url);
-				
+
 				if (empty($parsed_url['scheme'])) {
 					$url = 'http://' . $url;
 				}
 
-				if (setting_fetch('gwt') == 'on') { // If the user wants links to go via GWT 
+				if (setting_fetch('gwt') == 'on') { // If the user wants links to go via GWT
 					$encoded = urlencode($url);
 					$link = "http://google.com/gwt/n?u={$encoded}";
 				}
 				else {
 					$link = $url;
 				}
-			
+
 				$link_html = '<a href="' . $link . '" target="' . get_target() . '">' . $display_url . '</a>';
 				$url = $urls->url;
-			
+
 				// Replace all URLs *UNLESS* they have already been linked (for example to an image)
 				$pattern = '#((?<!href\=(\'|\"))'.preg_quote($url,'#').')#i';
 				$out = preg_replace($pattern,  $link_html, $out);
 			}
 		}
-		
+
 		if($entities->hashtags) {
 			foreach($entities->hashtags as $hashtag) {
 				$text = $hashtag->text;
@@ -485,7 +510,7 @@ function twitter_parse_tags($input, $entities = false) {
 				$out = preg_replace($pattern,  $link_html, $out, 1);
 			}
 		}
-		
+
 		if($entities->media) {
 			foreach($entities->media as $media) {
 				$url = $media->url;
@@ -494,31 +519,31 @@ function twitter_parse_tags($input, $entities = false) {
 				$out = preg_replace($pattern,  $link_html, $out, 1);
 			}
 		}
-		
+
 	}
 	else {  // If Entities haven't been returned (usually because of search or a bio) use Autolink
 		// Create an array containing all URLs
 		$urls = Twitter_Extractor::create($input)
 				->extractURLs();
 
-		// Hyperlink the URLs 
-		if (setting_fetch('gwt') == 'on') { // If the user wants links to go via GWT 
+		// Hyperlink the URLs
+		if (setting_fetch('gwt') == 'on') { // If the user wants links to go via GWT
 			foreach($urls as $url) {
 				$encoded = urlencode($url);
 				$out = str_replace($url, "<a href='http://google.com/gwt/n?u={$encoded}' target='" . get_target() . "'>{$url}</a>", $out);
-			}	
+			}
 		}
 		else {
 			$out = Twitter_Autolink::create($out)
 					->addLinksToURLs();
-		}	
-		
-		// Hyperlink the #	
+		}
+
+		// Hyperlink the #
 		$out = Twitter_Autolink::create($out)
 				->setTarget('')
 				->addLinksToHashtags();
 	}
-	
+
 	// Hyperlink the @ and lists
 	$out = Twitter_Autolink::create($out)
 			->setTarget('')
@@ -532,7 +557,7 @@ function twitter_parse_tags($input, $entities = false) {
 
 		if ($at && $at > 0) { // @ is in the string & isn't the first character
 			$tok = trim($tok, "?.,!\"\'");	// Remove any trailing punctuation
-			
+
 			if (filter_var($tok, FILTER_VALIDATE_EMAIL)) {	// Use the internal PHP email validator
 				$email = $tok;
 				$out = str_replace($email, "<a href=\"mailto:{$email}\">{$email}</a>", $out);	// Create the mailto: link
@@ -570,11 +595,11 @@ function format_interval($timestamp, $granularity = 2) {
 function twitter_status_page($query) {
 	$id = (string) $query[1];
 	if (is_numeric($id)) {
-		
+
 		$cb = get_codebird();
-		
+
 		$api_options = "id={$id}";
-			
+
 		$status = $cb->statuses_show_ID($api_options);
 		twitter_api_status($status);
 
@@ -582,15 +607,15 @@ function twitter_status_page($query) {
 
 		$content = theme('status', $status);
 
-		//	Show a link to the original tweet		
+		//	Show a link to the original tweet
 		$screen_name = $status->from->screen_name;
 		$content .= '<p>
 		                <a href="https://twitter.com/' . $screen_name . '/status/' . $id . '" target="'. get_target() . '">View original tweet on Twitter</a> | ';
-		
+
 		//	Translate the tweet
 		$content .= '   <a href="https://translate.google.com/m?hl=en&sl=auto&ie=UTF-8&q=' . urlencode($text) . '" target="'. get_target() . '">Translate this tweet</a>
 		            </p>';
-		
+
 		$content .= "<p>
 		                <strong>
 		                    <a href=\"https://mobile.twitter.com/{$screen_name}/status/{$id}/report\" target=\"". get_target() . "\">
@@ -622,7 +647,7 @@ function twitter_retweet_page($query) {
 	$id = (string) $query[1];
 	if (is_numeric($id)) {
 		$cb = get_codebird();
-		
+
 		$api_options = array("id" => $id);
 		$tl = $cb->statuses_show_ID($api_options);
 		twitter_api_status($tl);
@@ -649,7 +674,7 @@ function twitter_delete_page($query) {
 	if (is_numeric($id)) {
 		$cb = get_codebird();
 		$api_options = array("id" => $id);
-		$response = $cb->statuses_destroy_ID($api_options);	
+		$response = $cb->statuses_destroy_ID($api_options);
 		twitter_api_status($response);
 
 		twitter_refresh(user_current_username());
@@ -664,7 +689,7 @@ function twitter_deleteDM_page($query) {
 	if (is_numeric($id)) {
 		$cb = get_codebird();
 		$api_options = array("id" => $id);
-		$response = $cb->directMessages_destroy($api_options);	
+		$response = $cb->directMessages_destroy($api_options);
 		twitter_api_status($response);
 
 		twitter_refresh('messages/');
@@ -685,7 +710,7 @@ function twitter_follow_page($query) {
 	if ($screen_name) {
 		$cb = get_codebird();
 		$api_options = array("screen_name" => $screen_name);
-		
+
 		if($query[0] == 'follow'){
 			@twitter_api_status($cb->friendships_create($api_options));
 		} else {
@@ -702,7 +727,7 @@ function twitter_block_page($query) {
 
 		$cb = get_codebird();
 		$api_options = array("screen_name" => $screen_name);
-		
+
 		if($query[0] == 'block'){
 			@twitter_api_status($cb->blocks_create($api_options));
 			twitter_refresh("confirmed/block/{$screen_name}");
@@ -815,7 +840,7 @@ function twitter_confirmed_page($query)
         // the URL /confirm can be passed parameters like so /confirm/param1/param2/param3 etc.
         $action = $query[1]; // The action. block, unblock, spam
         $target = $query[2]; // The username of the target
-	
+
 	switch ($action) {
                 case 'block':
 			$content  = "<p><span class='avatar'><img src='images/dabr.png' width='48' height='48' /></span><span class='status shift'>Bye-bye @$target - you are now <strong>blocked</strong>.</span></p>";
@@ -846,7 +871,7 @@ function twitter_retweets($query) {
 			@twitter_api_status($cb->friendships_update($api_options));
 		}
 		twitter_refresh($user);
-	}	
+	}
 }
 
 function twitter_friends_page($query) {
@@ -855,21 +880,21 @@ function twitter_friends_page($query) {
 		user_ensure_authenticated();
 		$user = user_current_username();
 	}
-	
+
 	$cursor = $_GET['cursor'];
-	
+
 	if (!is_numeric($cursor)) {
 		$cursor = -1;
-	}	
+	}
 
 	$cb = get_codebird();
 
 	$api_options = array("screen_name" => $user);
-	
+
 	if ($cursor > 0) {
 		$api_options["cursor"] = $cursor;
 	}
-	
+
 	$tl = $cb->friends_list($api_options);
 	twitter_api_status($tl);
 
@@ -886,16 +911,16 @@ function twitter_followers_page($query) {
 	$cursor = $_GET['cursor'];
 	if (!is_numeric($cursor)) {
 		$cursor = -1;
-	}	
+	}
 
 	$cb = get_codebird();
 
 	$api_options = array("screen_name" => $user);
-	
+
 	if ($cursor > 0) {
 		$api_options["cursor"] = $cursor;
 	}
-	
+
 	$tl = $cb->followers_list($api_options);
 	twitter_api_status($tl);
 
@@ -908,17 +933,17 @@ function twitter_blocks() {
 	$cursor = $_GET['cursor'];
 	if (!is_numeric($cursor)) {
 		$cursor = -1;
-	}	
+	}
 
 	$cb = get_codebird();
 
 	$api_options = array("skip_status" => "true");
 	$api_options["count"] = setting_fetch('perPage', 20);
-	
+
 	if ($cursor > 0) {
 		$api_options["cursor"] = $cursor;
 	}
-	
+
 	$tl = $cb->blocks_list($api_options);
 	twitter_api_status($tl);
 
@@ -944,9 +969,9 @@ function twitter_retweeters_page($query) {
 function twitter_update() {
 	//	Was this request sent by POST?
 	twitter_ensure_post_action();
-	
+
 	$cb = get_codebird();
-	
+
 	$api_options  = array();
 
 	//	Upload the image (if there is one) first
@@ -959,7 +984,7 @@ function twitter_update() {
 		// will hold the uploaded IDs
 		$media_ids = array();
 
-		foreach ($media_files as $file) {	
+		foreach ($media_files as $file) {
 			// upload all media files
 			$reply = $cb->media_upload(array(
 				'media' => $file
@@ -979,7 +1004,7 @@ function twitter_update() {
 	//	POSTing adds slashes, let's get rid of them.
 	//	Or not...
 	$status_text = trim($_POST['status']);
-	
+
 	if ($status_text) {
 		//	Ensure that the text is properly escaped
 		$api_options["status"] = $status_text;
@@ -999,7 +1024,7 @@ function twitter_update() {
 			$api_options['lat']  = $lat;
 			$api_options['long'] = $long;
 		}
-	
+
 		//	Send the status
 		$reply = $cb->statuses_update($api_options);
 		twitter_api_status($reply);
@@ -1022,17 +1047,17 @@ function twitter_retweet($query) {
 
 function twitter_replies_page() {
 	$cb = get_codebird();
-	
+
 	$api_options = "";
-	
-	$per_page = setting_fetch('perPage', 20);	
+
+	$per_page = setting_fetch('perPage', 20);
 	$api_options = "count=$per_page";
 
 	//	If we're paginating through
 	if ($_GET['max_id']) {
 		$api_options .= '&max_id='.$_GET['max_id'];
 	}
-	
+
 	$replies = $cb->statuses_mentionsTimeline($api_options);
 	twitter_api_status($replies);
 
@@ -1045,15 +1070,15 @@ function twitter_replies_page() {
 function twitter_retweets_page() {
 	$cb = get_codebird();
 	$api_options = "";
-	
-	$per_page = setting_fetch('perPage', 20);	
+
+	$per_page = setting_fetch('perPage', 20);
 	$api_options = "count=$per_page";
 
 	//	If we're paginating through
 	if ($_GET['max_id']) {
 		$api_options .= '&max_id='.$_GET['max_id'];
 	}
-	
+
 	$retweets = $cb->statuses_retweetsOfMe($api_options);
 	twitter_api_status($retweets);
 
@@ -1067,7 +1092,7 @@ function twitter_directs_page($query) {
 
 	$cb = get_codebird();
 	$api_options = array("count" => setting_fetch('perPage', 20));
-	
+
 	$action = strtolower(trim($query[1]));
 	switch ($action) {
 		case 'create':
@@ -1090,8 +1115,8 @@ function twitter_directs_page($query) {
 
 			$tl = $cb->directMessages_sent($api_options);
 			twitter_api_status($tl);
-			
-			$tl = twitter_standard_timeline($tl, 'directs_sent');	
+
+			$tl = twitter_standard_timeline($tl, 'directs_sent');
 			$content = theme_directs_menu();
 			$content .= theme('timeline', $tl);
 			theme('page', 'DM Sent', $content);
@@ -1104,7 +1129,7 @@ function twitter_directs_page($query) {
 
 			$tl = $cb->directMessages($api_options);
 			twitter_api_status($tl);
-			$tl = twitter_standard_timeline($tl, 'directs_inbox');	
+			$tl = twitter_standard_timeline($tl, 'directs_inbox');
 			$content = theme_directs_menu();
 			$content .= theme('timeline', $tl);
 			theme('page', 'DM Inbox', $content);
@@ -1114,7 +1139,7 @@ function twitter_directs_page($query) {
 
 function twitter_search_page() {
 	$search_query = $_GET['query'];
-	
+
 	// Geolocation parameters
 	list($lat, $long) = explode(',', $_GET['location']);
 	$loc = $_GET['location'];
@@ -1148,11 +1173,11 @@ function twitter_search($search_query, $lat = null, $long = null, $radius = null
 	$per_page = setting_fetch('perPage', 20);
 
 	$cb = get_codebird();
-	$api_options = array("q" => urlencode($search_query), 
+	$api_options = array("q" => urlencode($search_query),
 		                 "count" => $per_page,
 		                 "result_type" => "recent" // Make this customisable?
 		                 );
-	
+
 	// $request = API_NEW."search/tweets.json?result_type=recent&q={$search_query}&rpp={$per_page}";
 	if ($_GET['max_id']) {
 		$api_options["max_id"] = $_GET['max_id'];
@@ -1173,7 +1198,7 @@ function twitter_search($search_query, $lat = null, $long = null, $radius = null
 
 	$tl = $cb->search_tweets($api_options);
 	twitter_api_status($tl);
-	
+
 	$tl = twitter_standard_timeline($tl->statuses, 'search');
 	return $tl;
 }
@@ -1202,7 +1227,7 @@ function twitter_user_page($query) {
 	// echo "<h1>q2 = {$subaction}</h1>";
 	$in_reply_to_id = (string) $query[3];
 	// echo "<h1>q3 = {$in_reply_to_id}</h1>";
-	
+
 	$content = '';
 
 	if (!$screen_name) {
@@ -1220,10 +1245,10 @@ function twitter_user_page($query) {
 		// Fetch the timeline early, so we can try find the tweet they're replying to
 
 		$cb = get_codebird();
-		
+
 		$api_options = "";
 
-		$per_page = setting_fetch('perPage', 20);	
+		$per_page = setting_fetch('perPage', 20);
 		$api_options = "&count={$per_page}";
 
 		//	If we're paginating through
@@ -1251,7 +1276,7 @@ function twitter_user_page($query) {
 	// Are we replying to anyone?
 	if (is_numeric($in_reply_to_id)) {
 		$tweet = twitter_find_tweet_in_timeline($in_reply_to_id, $tl);
-		
+
 		$out = twitter_parse_tags($tweet->text);
 
 		$content .= "<p>In reply to:<br />{$out}</p>";
@@ -1261,10 +1286,10 @@ function twitter_user_page($query) {
 				->extractMentionedUsernames();
 			$to_users = array_unique(array_merge($to_users, $found));
 		// }
-				
+
 		if ($tweet->entities->hashtags) {
 			$hashtags = $tweet->entities->hashtags;
-		}		
+		}
 	}
 
 	// Build a status message to everyone we're talking to
@@ -1298,7 +1323,7 @@ function twitter_favourites_page($query) {
 
 	$api_options = "";
 
-	$per_page = setting_fetch('perPage', 20);	
+	$per_page = setting_fetch('perPage', 20);
 	$api_options = "&count={$per_page}";
 
 	//	If we're paginating through
@@ -1308,7 +1333,7 @@ function twitter_favourites_page($query) {
 
 	$api_options .= "&screen_name={$screen_name}";
 
-	//echo "$api_options";	
+	//echo "$api_options";
 	$favorites_list = $cb->favorites_list($api_options);
 	twitter_api_status($favorites_list);
 	$tl = twitter_standard_timeline($favorites_list, 'favourites');
@@ -1341,7 +1366,7 @@ function twitter_home_page() {
 
 	$api_options = "";
 
-	$per_page = setting_fetch('perPage', 20);	
+	$per_page = setting_fetch('perPage', 20);
 	$api_options = "&count={$per_page}";
 
 	//	If we're paginating through
@@ -1355,7 +1380,7 @@ function twitter_home_page() {
 
 	$api_options .= "&screen_name={$screen_name}";
 
-	//echo "$api_options";	
+	//echo "$api_options";
 	$home_timeline = $cb->statuses_homeTimeline($api_options);
 	twitter_api_status($home_timeline);
 	$tl = twitter_standard_timeline($home_timeline, 'friends');
@@ -1423,7 +1448,7 @@ function twitter_standard_timeline($feed, $source) {
 
 	$output = array();
 //	if (!is_array($feed) && $source != 'thread') return $output;
-	
+
 	//32bit int / snowflake patch
 	// if (is_array($feed)) {
 	// 	foreach($feed as $key => $status) {
@@ -1534,10 +1559,10 @@ function preg_match_one($pattern, $subject, $flags = null) {
 }
 
 function twitter_user_info($username = null) {
-	// if (!$username) 
+	// if (!$username)
 
 	$cb = get_codebird();
-	
+
 	$api_options = "screen_name={$username}";
 	$user_info = $cb->users_show($api_options);
 	twitter_api_status($user_info);
@@ -1557,10 +1582,10 @@ function twitter_is_reply($status) {
 		if ($status->entities->user_mentions)
 		{
 			$entities = $status->entities;
-			
+
 			foreach($entities->user_mentions as $mentions)
 			{
-				if ($mentions->screen_name == $user) 
+				if ($mentions->screen_name == $user)
 				{
 					return true;
 				}
@@ -1568,7 +1593,7 @@ function twitter_is_reply($status) {
 		}
 		return false;
 	}
-	
+
 	// If there are no entities (for example on a search) do a simple regex
 	$found = Twitter_Extractor::create($status->text)->extractMentionedUsernames();
 	foreach($found as $mentions)
@@ -1617,7 +1642,7 @@ function twitter_rate_limit($rate) {
 		global $rate_limit;
 		$ratelimit_time = $rate["reset"]- time();
 		$ratelimit_time = floor($ratelimit_time / 60);
-		$rate_limit = $rate["remaining"] . "/" . $rate["limit"] . " reset in {$ratelimit_time} minutes";		
+		$rate_limit = $rate["remaining"] . "/" . $rate["limit"] . " reset in {$ratelimit_time} minutes";
 	}
 	// $backtrace = debug_backtrace();
 	// echo "<BR> Called by <pre>". var_export($backtrace,true). "</pre><br/>";
