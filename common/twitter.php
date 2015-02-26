@@ -1450,19 +1450,19 @@ function twitter_standard_timeline($feed, $source) {
 //	if (!is_array($feed) && $source != 'thread') return $output;
 
 	//32bit int / snowflake patch
-	// if (is_array($feed)) {
-	// 	foreach($feed as $key => $status) {
-	// 		if($status->id_str) {
-	// 			$feed[$key]->id = $status->id_str;
-	// 		}
-	// 		if($status->in_reply_to_status_id_str) {
-	// 			$feed[$key]->in_reply_to_status_id = $status->in_reply_to_status_id_str;
-	// 		}
-	// 		if($status->retweeted_status->id_str) {
-	// 			$feed[$key]->retweeted_status->id = $status->retweeted_status->id_str;
-	// 		}
-	// 	}
-	// }
+		if (is_object($feed)) {
+			foreach($feed as $key => $status) {
+				if($status->id_str) {
+					$status->id = $status->id_str;
+	 	 		}
+				if($status->in_reply_to_status_id_str) {
+					$status->in_reply_to_status_id = $status->in_reply_to_status_id_str;
+	 		}
+				if($status->retweeted_status->id_str) {
+					$status->retweeted_status->id = $status->retweeted_status->id_str;
+	 		}
+	 	}
+	 }
 
 	foreach ($feed as $status) {
 //		echo "</pre><br.>STATUS = " . $status->text;
