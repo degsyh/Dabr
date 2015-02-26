@@ -196,7 +196,7 @@ function theme_colours() {
 function theme_profile_form($user){
 	// Profile form
 	$out .= "
-				<form name='profile' action='edit-profile' method='post' enctype='multipart/form-data'>
+				<form name='profile' action='account' method='post' enctype='multipart/form-data'>
 				    <hr />Name:     <input name='name' maxlength='20' value='"                 . htmlspecialchars($user->name, ENT_QUOTES) ."' />
 				    <br />Avatar:   <img src='".theme_get_avatar($user)."' /> <input type='file' name='image' />
 				    <br />Bio:      <textarea name='description' cols=40 rows=6 maxlength=160>". htmlspecialchars($user->description, ENT_QUOTES)."</textarea>
